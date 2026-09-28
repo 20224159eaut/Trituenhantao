@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nông dân, Sói, Dê, Bắp cải – BFS và A*</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef2f5; --card:#fff; --ink:#132229; --mute:#66757d; --line:#e1e7ea;
+  --river:#0f6e8c; --river-d:#0a5470; --river-bg:#eaf6fa;
+  --bad:#c62828; --badbg:#fdecec; --ok:#1e7d46; --okbg:#e8f6ed;
+  --skip:#70808a; --skipbg:#eef1f3; --gold:#946200; --goldbg:#fff2d1;
+  --sans:"Be Vietnam Pro",system-ui,sans-serif; --mono:"JetBrains Mono",Consolas,monospace;
+  --shadow:0 1px 2px rgba(19,34,41,.06),0 4px 14px rgba(19,34,41,.06); --r:14px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+header{background:linear-gradient(135deg,var(--river) 0%,var(--river-d) 100%);color:#fff;padding:30px 32px 26px}
+header .wrap{max-width:1180px;margin:0 auto}
+header h1{margin:0 0 6px;font-size:24px;font-weight:800;letter-spacing:-.2px;display:flex;align-items:center;gap:10px}
+header p{margin:0;opacity:.88;font-size:14px}
+nav{position:sticky;top:0;z-index:20;display:flex;gap:4px;padding:0 32px;flex-wrap:wrap;border-bottom:1px solid var(--line);background:rgba(255,255,255,.92);backdrop-filter:saturate(180%) blur(8px)}
+nav .wrap{display:flex;gap:2px;max-width:1180px;margin:0 auto;width:100%;flex-wrap:wrap}
+nav button{border:0;background:none;padding:14px 18px;font:600 14px/1 var(--sans);cursor:pointer;
+  border-bottom:3px solid transparent;color:var(--mute);letter-spacing:.1px;transition:color .15s}
+nav button:hover{color:var(--river-d)}
+nav button.on{color:var(--river-d);border-color:var(--river)}
+main{max-width:1180px;margin:0 auto;padding:26px 32px 70px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px 22px;margin-bottom:18px;box-shadow:var(--shadow)}
+h2{font-size:18px;margin:0 0 10px;font-weight:700;letter-spacing:-.1px}
+h3{font-size:14.5px;margin:16px 0 8px;font-weight:700;color:var(--river-d)}
+p{margin:0 0 4px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}
+th{color:var(--mute);font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.3px}
+tr:last-child td{border-bottom:0}
+code,.st{font-family:var(--mono);font-size:12.5px}
+code{background:#f1f5f7;padding:1px 6px;border-radius:5px}
+.tag{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:700;white-space:nowrap;letter-spacing:.2px}
+.SAI{background:var(--badbg);color:var(--bad)}.THEM{background:var(--okbg);color:var(--ok)}
+.SKIP{background:var(--skipbg);color:var(--skip)}.GOAL{background:var(--goldbg);color:var(--gold)}
+tr.SAIrow td{background:var(--badbg)}
+.ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.ctl button{padding:8px 16px;border:1.5px solid var(--river);background:#fff;color:var(--river-d);border-radius:8px;
+  cursor:pointer;font:600 13.5px var(--sans);transition:.15s}
+.ctl button:hover{background:var(--river-bg)}
+.ctl button.fill{background:var(--river);color:#fff;border-color:var(--river)}
+.ctl button.fill:hover{background:var(--river-d)}
+.ctl span{color:var(--mute);font-size:13px;margin-left:2px}
+.explain{background:var(--river-bg);border-left:4px solid var(--river);padding:12px 14px;margin:10px 0;border-radius:0 8px 8px 0;font-size:14px}
+.now{font-size:16px;font-weight:700;margin-bottom:2px}
+ol.list{margin:4px 0;padding-left:22px}ol.list li{margin:3px 0}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:800px){.cols{grid-template-columns:1fr} main{padding:20px 16px 60px} header{padding:22px 18px} nav{padding:0 16px}}
+.bar{display:flex;align-items:center;gap:10px;margin:6px 0;font-size:13.5px}
+.bar span{width:42px;color:var(--mute);font-weight:600}
+.bar i{display:block;height:18px;border-radius:4px;transition:width .3s}.bar.b i{background:#9aa8ae}.bar.a i{background:var(--river)}
+.win{color:var(--ok);font-weight:700}
+.legend{font-size:13px;color:var(--mute);background:#f7f9fa;border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:2}
+.scroll{overflow-x:auto;border-radius:10px}
+
+/* ---- Cảnh mô phỏng qua sông (điểm nhấn chính) ---- */
+.scene{position:relative;height:400px;min-width:820px;border-radius:16px;overflow:hidden;
+  box-shadow:0 8px 28px rgba(15,110,140,.18),inset 0 0 0 1px rgba(255,255,255,.4);
+  background:linear-gradient(180deg,#bfe4f5 0%,#dff2fa 46%,#dff2fa 50%);--d:.9s}
+.scene::before{content:"";position:absolute;inset:0 0 50% 0;background:
+  radial-gradient(60px 60px at 88% 22%,#fff6cf 0%,#fff6cf 55%,transparent 60%),
+  radial-gradient(90px 26px at 20% 18%,#ffffffb0 40%,transparent 65%),
+  radial-gradient(70px 22px at 34% 30%,#ffffff90 40%,transparent 65%)}
+.bank{position:absolute;top:50%;bottom:0;width:30%;background:linear-gradient(180deg,#8fc06a 0%,#79ab57 100%)}
+.bank.l{left:0;border-radius:0 0 0 16px}.bank.r{right:0;border-radius:0 0 16px 0}
+.bank::after{content:"";position:absolute;left:0;right:0;top:0;height:8px;background:#6fa04c}
+.river{position:absolute;left:30%;width:40%;top:50%;bottom:0;
+  background:repeating-linear-gradient(90deg,#3f8fb3 0 34px,#4d9dc2 34px 68px)}
+.actor{position:absolute;width:76px;text-align:center;font-size:46px;line-height:1;
+  transition:left var(--d) ease,top var(--d) ease,opacity .4s;filter:drop-shadow(0 3px 4px rgba(0,0,0,.18))}
+.actor small{display:block;font-size:13px;font-weight:600;color:#132229;line-height:1.3;
+  text-shadow:0 1px 0 #fff,0 0 6px #fff}
+.actor.eaten{opacity:.15;filter:grayscale(1)}
+.boat{font-size:104px;top:126px;width:150px;text-align:center;filter:drop-shadow(0 5px 6px rgba(0,0,0,.22))}
+.cap{position:absolute;left:0;right:0;top:14px;text-align:center;font-weight:700;font-size:15.5px;padding:0 16px}
+.cap::before{content:"";display:none}
+.fx{position:absolute;top:68px;font-weight:800;color:var(--bad);background:#fff;border:2px solid var(--bad);
+  border-radius:8px;padding:5px 12px;font-size:14.5px;box-shadow:0 3px 10px rgba(0,0,0,.15)}
+.gsvg{min-width:940px;width:100%;height:auto;display:block}
+.gsvg text{font-family:var(--mono)}
+.leg i{display:inline-block;width:14px;height:12px;border-radius:3px;margin:0 4px 0 12px;vertical-align:-1px;border:2px solid}
+.ctl select{padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font:600 13.5px var(--sans);color:var(--ink)}
+ol.narr li{padding:4px 8px;border-radius:6px}
+ol.narr li.on{background:var(--goldbg);font-weight:700}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>🐐 Bài toán Nông dân – Sói – Dê – Bắp cải</h1>
+  <p>Phân tích không gian trạng thái · Tìm kiếm bằng BFS và A* · Mô phỏng trực quan từng bước</p>
+</div></header>
+<nav id="nav"><div class="wrap">
+  <button data-t="space" class="on">1. Không gian trạng thái</button>
+  <button data-t="bfs">2. BFS</button>
+  <button data-t="astar">3. A*</button>
+  <button data-t="sim">4. Mô phỏng qua sông</button>
+  <button data-t="cmp">5. So sánh</button>
+</div></nav>
+<main id="view">Đang tải…</main>
+
+<script>
+let D, tab = 'space', idx = {bfs: 0, astar: 0}, all = {bfs: false, astar: false}, timer = null, sc = null;
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const L = ['N','S','D','B'], NAME = ['Nông dân','Sói','Dê','Bắp cải'];
+const codeOf = label => { const r = label.match(/Phải\[(.*?)\]/)[1].split(' '); return L.map(x => r.includes(x) ? '1' : '0').join(''); };
+const invalid = c => c[1] === c[2] && c[0] !== c[1] ? [1,2] : c[2] === c[3] && c[0] !== c[2] ? [2,3] : null;
+
+fetch('/api/solve').then(r => r.json()).then(d => { D = d; show(); });
+$('#nav').onclick = e => {
+  if (!e.target.dataset.t) return;
+  tab = e.target.dataset.t;
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b === e.target));
+  show();
+};
+function stopAll() { clearInterval(timer); timer = null; if (sc) sc.tok++; }
+function show() {
+  if (!D) return;
+  stopAll(); sc = null;
+  const v = $('#view');
+  if (tab === 'space') v.innerHTML = space();
+  else if (tab === 'cmp') v.innerHTML = compare();
+  else if (tab === 'sim') mountSim();
+  else mountAlgo(tab);
+}
+function cls(s) {
+  if (s.startsWith('SAI')) return 'SAI';
+  if (s.startsWith('THÊM')) return 'THEM';
+  if (s.startsWith('ĐÍCH')) return 'GOAL';
+  return 'SKIP';
+}
+
+/* ================= Cảnh qua sông (có hoạt ảnh) ================= */
+const EMO = ['👨‍🌾','🐺','🐐','🥬'];
+const XL = [2, 10, 18, 26], XR = [66, 74, 82, 90], DOCK = [40, 58];
+const Y_STAND = 137, Y_SEAT = 104, Y_DOCK = 192, Y_FX = 68;
+function makeScene(host) {
+  host.innerHTML = `<div class="scene"><div class="bank l"></div><div class="river"></div><div class="bank r"></div>
+    <div class="cap"></div></div>`;
+  const el = host.firstChild, o = {tok: 0, code: '0000', el};
+  o.boat = document.createElement('div'); o.boat.className = 'actor boat'; o.boat.textContent = '🛶'; el.append(o.boat);
+  o.a = [0,1,2,3].map(i => { const d = document.createElement('div'); d.className = 'actor';
+    d.innerHTML = EMO[i] + '<small>' + NAME[i] + '</small>'; el.append(d); return d; });
+  const put = (d, x, y) => { d.style.left = x + '%'; d.style.top = y + 'px'; };
+  o.place = code => {
+    o.code = code;
+    o.a.forEach((d, i) => { put(d, code[i] === '1' ? XR[i] : XL[i], Y_STAND); d.classList.remove('eaten'); });
+    put(o.boat, DOCK[+code[0]] - 1, Y_DOCK);
+    el.querySelectorAll('.fx').forEach(x => x.remove());
+  };
+  o.cap = (t, bad) => { const c = el.querySelector('.cap'); c.textContent = t; c.style.color = bad ? 'var(--bad)' : ''; };
+  o.speed = s => el.style.setProperty('--d', (0.9 / s) + 's');
+  o.violation = code => {
+    const p = invalid(code); if (!p) return;
+    o.a[p[1]].classList.add('eaten');
+    const f = document.createElement('div'); f.className = 'fx';
+    f.textContent = NAME[p[0]] + ' ăn ' + NAME[p[1]] + '!';
+    f.style.left = (code[p[0]] === '1' ? 66 : 4) + '%'; el.append(f);
+  };
+  /* trượt qua sông: lên thuyền → chèo sang → xuống thuyền */
+  o.move = async (from, to, wait) => {
+    const item = [1,2,3].find(i => from[i] !== to[i]) ?? 0, dk = +from[0], nd = 1 - dk;
+    const seat = (d, dock, k) => put(d, dock + (k ? 13 : 1), Y_SEAT);
+    seat(o.a[0], DOCK[dk], 0); if (item) seat(o.a[item], DOCK[dk], 1);
+    await wait(1000);
+    put(o.boat, DOCK[nd] - 1, Y_DOCK); seat(o.a[0], DOCK[nd], 0); if (item) seat(o.a[item], DOCK[nd], 1);
+    await wait(1000);
+    o.place(to); await wait(900);
+  };
+  return o;
+}
+function runner(fn) {   // chạy hoạt ảnh; bị huỷ khi bấm nút khác
+  const my = ++sc.tok;
+  const wait = ms => new Promise((res, rej) => setTimeout(() => sc.tok === my ? res() : rej('abort'), ms * (parseFloat(getComputedStyle(sc.el).getPropertyValue('--d') || .9) / 0.9)));
+  return fn(wait).catch(e => { if (e !== 'abort') throw e; });
+}
+
+/* ================= Sơ đồ không gian trạng thái ================= */
+const POS = {'0000':[0,190],'1010':[1,190],'0010':[2,190],'1110':[3,105],'1011':[3,275],'0100':[4,105],
+  '0001':[4,275],'1101':[5,190],'0101':[6,190],'1111':[7,190],'0110':[3,25],'1100':[4,25],'0011':[3,355],
+  '1001':[4,355],'1000':[0,355],'0111':[6,355]};
+const P = c => [55 + POS[c][0] * 118, POS[c][1]], NW = 96, NH = 44;
+const KC = {add:'#1b7a43', bad:'#b3261e', skip:'#8a969c', path:'#d99a00'};
+function edge(f, t, k) {
+  let [x1,y1] = P(f), [x2,y2] = P(t), dx = x2 - x1, dy = y2 - y1, n = Math.hypot(dx, dy), ux = dx / n, uy = dy / n;
+  const cl = Math.min((NW / 2) / (Math.abs(ux) || 1e-9), (NH / 2) / (Math.abs(uy) || 1e-9)), o = 7;
+  const nx = -uy * o, ny = ux * o;
+  const a = [x1 + ux * cl + nx, y1 + uy * cl + ny], b = [x2 - ux * (cl + 3) + nx, y2 - uy * (cl + 3) + ny];
+  return `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${KC[k]}" stroke-width="${k === 'path' ? 4.5 : 2}"
+    ${k === 'bad' || k === 'skip' ? 'stroke-dasharray="5 4"' : ''} marker-end="url(#m-${k})"/>`;
+}
+const NS = {cur:['#ffe3b3','#e07b00',3], done:['#d6ecdd','#1b7a43',2], open:['#d9e9f6','#1f6f8b',2],
+  bad:['#fdeceb','#b3261e',2], goal:['#ffe27a','#8a6100',3], none:['#fff','#b9c5ca',1]};
+function graph(status, edges, info, pathEdges) {
+  const mk = Object.keys(KC).map(k => `<marker id="m-${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+    orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${KC[k]}"/></marker>`).join('');
+  let s = `<svg class="gsvg" viewBox="0 0 960 400"><defs>${mk}</defs>`;
+  edges.forEach(e => s += edge(e.f, e.t, e.k));
+  (pathEdges || []).forEach(e => s += edge(e[0], e[1], 'path'));
+  Object.keys(POS).forEach(c => {
+    const st = status[c] || 'none', [fill, stroke, sw] = NS[st], [x, y] = P(c);
+    const l = [], r = []; L.forEach((ch, i) => (c[i] === '1' ? r : l).push(ch));
+    const inf = info[c];
+    s += `<g opacity="${st === 'none' && invalid(c) ? .4 : 1}"><rect x="${x - NW / 2}" y="${y - NH / 2}" width="${NW}" height="${NH}" rx="8"
+      fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${st === 'bad' || st === 'none' ? 'stroke-dasharray="4 3"' : ''}/>
+      <text x="${x}" y="${y - 4}" text-anchor="middle" font-size="12">T: ${l.join('') || '—'}</text>
+      <text x="${x}" y="${y + 13}" text-anchor="middle" font-size="12">P: ${r.join('') || '—'}</text>`;
+    if (inf) s += `<text x="${x}" y="${y + NH / 2 + 13}" text-anchor="middle" font-size="11" fill="#17252b">${
+      inf.h !== undefined ? `g=${inf.g} h=${inf.h} f=${inf.f}` : `độ sâu ${inf.g}`}</text>`;
+    if (invalid(c)) s += `<text x="${x + NW / 2 - 3}" y="${y - NH / 2 + 3}" text-anchor="end" font-size="11" fill="#b3261e">sai</text>`;
+    s += '</g>';
+  });
+  return s + '</svg>';
+}
+function graphAt(r, i, isA) {
+  const status = {}, info = {}, edges = {}, exp = new Set(), bad = new Set(), st = r.steps[i];
+  const cur = codeOf(st.current), open = new Set(st.queue.map(q => codeOf(q.split('  (')[0])));
+  for (let j = 0; j <= i; j++) {
+    const s = r.steps[j], c = codeOf(s.current);
+    if (j === 0) info[c] = isA ? {g: s.g, h: s.h, f: s.f} : {g: 0};
+    if (j < i) exp.add(c);
+    s.candidates.forEach(cd => {
+      if (cd.status === 'KHÔNG THỂ') return;
+      const t = codeOf(cd.state);
+      const k = cd.status === 'SAI' ? 'bad' : cd.status.startsWith('THÊM') ? 'add' : 'skip';
+      edges[c + '>' + t] = {f: c, t, k};
+      if (k === 'bad') bad.add(t);
+      if (k === 'add') info[t] = isA ? {g: cd.g, h: cd.h, f: cd.f} : {g: s.g + 1};
+    });
+  }
+  Object.keys(POS).forEach(c => status[c] = c === cur ? (i === r.steps.length - 1 && r.found ? 'goal' : 'cur')
+    : exp.has(c) ? 'done' : open.has(c) ? 'open' : bad.has(c) ? 'bad' : 'none');
+  let pe = [];
+  if (i === r.steps.length - 1 && r.found) {
+    const cs = r.path.map(p => codeOf(p.split('  →  ')[1]));
+    pe = cs.slice(1).map((c, k) => [cs[k], c]);
+  }
+  return graph(status, Object.values(edges), info, pe);
+}
+const gLegend = isA => `<div class="legend leg"><i style="background:#ffe3b3;border-color:#e07b00"></i>đang xét
+  <i style="background:#d9e9f6;border-color:#1f6f8b"></i>${isA ? 'trong OPEN' : 'trong hàng đợi'}
+  <i style="background:#d6ecdd;border-color:#1b7a43"></i>đã mở rộng
+  <i style="background:#fdeceb;border-color:#b3261e"></i>trạng thái sai
+  <i style="background:#fff;border-color:#b9c5ca"></i>chưa gặp
+  <br><span style="color:#1b7a43">▬ mũi tên xanh</span>: thêm vào ${isA ? 'OPEN' : 'hàng đợi'} &nbsp;
+  <span style="color:#b3261e">┅ đỏ</span>: bị loại vì sai &nbsp; <span style="color:#6b7780">┅ xám</span>: đã thăm/bỏ qua &nbsp;
+  <span style="color:#d99a00">▬ vàng</span>: đường đi tìm được. T = bờ trái, P = bờ phải.</div>`;
+
+/* ================= 1. Không gian trạng thái ================= */
+function space() {
+  const valid = D.states.filter(s => s.valid).length, status = {}, edges = [], info = {};
+  D.states.forEach(s => { status[s.code] = s.valid ? 'open' : 'bad'; if (s.valid) info[s.code] = {g: 0, h: s.h, f: s.h}; });
+  Object.keys(info).forEach(c => info[c] = {g: '?', h: info[c].h, f: '?'});
+  D.states.filter(s => s.valid && s.code !== '1111').forEach(s => {
+    for (let i = 0; i < 4; i++) {
+      if (i && s.code[i] !== s.code[0]) continue;
+      const t = s.code.split(''); t[0] = t[0] === '1' ? '0' : '1'; if (i) t[i] = t[0];
+      edges.push({f: s.code, t: t.join(''), k: invalid(t.join('')) ? 'bad' : 'skip'});
+    }
+  });
+  return `<div class="card"><h2>Cách biểu diễn trạng thái</h2>
+  <p>Mỗi trạng thái là bộ 4 giá trị (Nông dân, Sói, Dê, Bắp cải), mỗi giá trị là 0 (bờ trái) hoặc 1 (bờ phải).
+  Thuyền luôn đi cùng nông dân nên không cần lưu riêng. Có 2<sup>4</sup> = <b>16</b> trạng thái, trong đó
+  <b>${valid}</b> an toàn và <b>${16 - valid}</b> bị loại.</p>
+  <p>Trạng thái đầu: <code>0000</code>. Trạng thái đích: <code>1111</code>. Mỗi lần qua sông là 1 bước, chi phí 1.
+  Khi nông dân vắng mặt thì Sói và Dê không được ở cùng bờ, Dê và Bắp cải cũng vậy.</p></div>
+  <div class="card"><h2>Sơ đồ không gian trạng thái đầy đủ</h2>
+  <p>Ô xanh dương là trạng thái hợp lệ (ghi h(n) bên dưới), ô đỏ nét đứt là trạng thái sai. Mũi tên là các hành động có thể thử.</p>
+  <div class="scroll">${graph(status, edges, Object.fromEntries(Object.entries(info).map(([k, v]) => [k, {g: '', h: v.h, f: ''}])), [])
+    .replace(/g= h=(\d+) f=/g, 'h=$1')}</div>
+  <p class="leg"><span style="color:#b3261e">┅ đỏ</span>: hành động dẫn tới trạng thái sai. <span style="color:#6b7780">┅ xám</span>: hành động dẫn tới trạng thái an toàn.</p></div>
+  <div class="card scroll"><h2>16 trạng thái</h2>
+  <table><tr><th>Mã (N S D B)</th><th>Trạng thái</th><th>Kết luận</th><th>h(n)</th></tr>
+  ${D.states.map(s => `<tr class="${s.valid ? '' : 'SAIrow'}"><td><code>${s.code}</code></td><td class="st">${s.label}</td>
+  <td>${s.valid ? '<span class="tag THEM">Hợp lệ</span>' : '<span class="tag SAI">Sai</span> ' + esc(s.reason)}</td>
+  <td>${s.h ?? '—'}</td></tr>`).join('')}</table></div>`;
+}
+
+/* ================= 2, 3. BFS / A* ================= */
+function mountAlgo(k) {
+  const r = D[k], isA = k === 'astar', n = r.steps.length;
+  const intro = isA
+    ? `<b>A*</b> chọn nút có <b>f(n) = g(n) + h(n)</b> nhỏ nhất trong OPEN. <b>g(n)</b> = số lần qua sông đã đi.
+       <b>h(n)</b> = ước lượng số lần qua sông còn lại: còn k vật ở bờ trái thì cần ít nhất 2k−1 chuyến (nông dân bờ trái)
+       hoặc 2k chuyến (nông dân bờ phải). h không lớn hơn chi phí thật nên A* cho lời giải tối ưu.`
+    : `<b>BFS</b> là thuật toán tìm kiếm: lấy phần tử đầu hàng đợi (FIFO), sinh trạng thái con, loại trạng thái sai hoặc đã thăm,
+       rồi xếp phần còn lại vào cuối hàng đợi. BFS không tính điểm, chỉ duyệt lần lượt theo độ sâu.`;
+  $('#view').innerHTML = `<div class="card"><h2>${r.name}</h2><p>${intro}</p>
+    <div class="ctl"><button id="prev">◀ Trước</button><button id="next" class="fill">Sau ▶</button>
+    <button id="play" class="fill">▶ Chạy tự động</button>
+    <select id="spd"><option value="0.5">Chậm</option><option value="1" selected>Vừa</option><option value="2">Nhanh</option></select>
+    <button id="reset">↺ Về đầu</button><button id="toggle">Xem tất cả các bước</button><span id="cnt"></span></div></div>
+    <div class="card"><h3>Mô phỏng: trạng thái của nút đang xét</h3><div class="scroll" id="scn"></div></div>
+    <div class="card"><h3>Sơ đồ không gian trạng thái của ${r.name}</h3>${gLegend(isA)}<div class="scroll" id="gr"></div></div>
+    <div id="panel"></div>`;
+  sc = makeScene($('#scn'));
+  const update = () => {
+    idx[k] = Math.max(0, Math.min(n - 1, idx[k]));
+    const s = r.steps[idx[k]];
+    $('#cnt').textContent = `Bước ${idx[k] + 1} / ${n}`;
+    $('#gr').innerHTML = graphAt(r, idx[k], isA);
+    sc.speed(+$('#spd').value); sc.place(codeOf(s.current));
+    sc.cap(`Bước ${s.no}: đang xét nút này` + (s.g !== null && isA ? ` (g=${s.g}, h=${s.h}, f=${s.f})` : ''));
+    const list = all[k] ? r.steps.map((_, i) => i) : [idx[k]];
+    $('#panel').innerHTML = list.map(i => step(r.steps[i], isA, i === n - 1, r)).join('');
+    $('#toggle').textContent = all[k] ? 'Xem từng bước' : 'Xem tất cả các bước';
+  };
+  const stop = () => { clearInterval(timer); timer = null; $('#play').textContent = '▶ Chạy tự động'; };
+  const play = () => {
+    clearInterval(timer);
+    timer = setInterval(() => { if (idx[k] >= n - 1) return stop(); idx[k]++; update(); }, 2600 / +$('#spd').value);
+    $('#play').textContent = '⏸ Dừng';
+  };
+  $('#prev').onclick = () => { stop(); idx[k]--; update(); };
+  $('#next').onclick = () => { stop(); idx[k]++; update(); };
+  $('#reset').onclick = () => { stop(); idx[k] = 0; update(); };
+  $('#toggle').onclick = () => { all[k] = !all[k]; update(); };
+  $('#play').onclick = () => { if (timer) return stop(); if (idx[k] >= n - 1) idx[k] = 0; update(); play(); };
+  $('#spd').onchange = () => { sc.speed(+$('#spd').value); if (timer) play(); };
+  update();
+}
+function step(s, isA, last, r) {
+  const q = isA ? 'Danh sách OPEN (f tăng dần)' : 'Hàng đợi (đầu → cuối)';
+  const vis = isA ? 'Tập CLOSED (đã mở rộng)' : 'Tập VISITED (đã gặp)';
+  const cand = s.candidates.length ? `<h3>Các hành động thử từ nút này</h3><div class="scroll"><table>
+    <tr><th>Hành động</th><th>Trạng thái sinh ra</th><th>Kết quả</th><th>Giải thích</th></tr>
+    ${s.candidates.map(c => `<tr class="${c.status === 'SAI' ? 'SAIrow' : ''}"><td>${c.action}</td><td class="st">${c.state}</td>
+    <td><span class="tag ${cls(c.status)}">${c.status}</span></td><td>${esc(c.reason)}</td></tr>`).join('')}</table></div>` : '';
+  const path = last && r.found ? `<div class="explain"><b>Đường đi tìm được (${r.cost} lần qua sông):</b>
+    <ol class="list" start="0">${r.path.map(p => `<li class="st">${p}</li>`).join('')}</ol></div>` : '';
+  return `<div class="card"><div class="now">Bước ${s.no}: đang xét <span class="st">${s.current}</span></div>
+  <div class="explain">${esc(s.explain)}</div>${cand}
+  <div class="cols"><div><h3>${q}</h3>${lst(s.queue)}</div><div><h3>${vis}</h3>${lst(s.visited)}</div></div>${path}</div>`;
+}
+const lst = a => a.length ? `<ol class="list">${a.map(x => `<li class="st">${x}</li>`).join('')}</ol>` : '<i>(rỗng)</i>';
+
+/* ================= 4. Mô phỏng qua sông ================= */
+function mountSim() {
+  $('#view').innerHTML = `<div class="card"><h2>Mô phỏng qua sông</h2>
+    <p>Xem nông dân chèo thuyền theo đúng lời giải mà thuật toán tìm được, hoặc thử một nước đi sai để thấy vì sao thuật toán loại nó.</p>
+    <div class="ctl"><select id="alg"><option value="bfs">Lời giải của BFS</option><option value="astar">Lời giải của A*</option></select>
+    <button id="all" class="fill">▶ Chạy toàn bộ</button><button id="one">Bước kế ⏭</button><button id="rs">↺ Làm lại</button>
+    <button id="wrong">⚠ Thử nước đi sai</button>
+    <select id="spd"><option value="0.5">Chậm</option><option value="1" selected>Vừa</option><option value="2">Nhanh</option></select></div>
+    <div class="scroll" id="scn"></div></div>
+    <div class="card"><h3>Các bước của lời giải</h3><ol class="list narr" id="narr"></ol></div>`;
+  sc = makeScene($('#scn'));
+  let codes = [], i = 0;
+  const hi = () => document.querySelectorAll('#narr li').forEach((li, k) => li.classList.toggle('on', k === i));
+  const load = () => {
+    const p = D[$('#alg').value].path; codes = p.map(x => codeOf(x.split('  →  ')[1]));
+    $('#narr').innerHTML = p.map(x => `<li class="st">${esc(x)}</li>`).join('');
+    i = 0; sc.tok++; sc.place(codes[0]); sc.speed(+$('#spd').value); sc.cap('Bắt đầu: tất cả ở bờ trái'); hi();
+  };
+  const next = w => (async () => {
+    if (i >= codes.length - 1) return;
+    sc.cap(D[$('#alg').value].path[i + 1].split('  →  ')[0]);
+    await sc.move(codes[i], codes[i + 1], w); i++; hi();
+    if (i === codes.length - 1) sc.cap('Thành công: cả 4 đã sang bờ phải sau ' + i + ' lần qua sông');
+  })();
+  $('#alg').onchange = load;
+  $('#spd').onchange = () => sc.speed(+$('#spd').value);
+  $('#rs').onclick = load;
+  $('#one').onclick = () => runner(w => next(w));
+  $('#all').onclick = () => { if (i >= codes.length - 1) load(); runner(async w => { while (i < codes.length - 1) { await next(w); await w(500); } }); };
+  $('#wrong').onclick = () => { load(); runner(async w => {
+    sc.cap('Thử: nông dân chở Sói sang trước…');
+    await sc.move('0000', '1100', w);
+    sc.violation('1100'); sc.cap('Trạng thái 1100 bị loại: Dê ăn Bắp cải ở bờ trái', true);
+  }); };
+  load();
+}
+
+/* ================= 5. So sánh ================= */
+function compare() {
+  const b = D.bfs, a = D.astar;
+  const rows = [['Số nút được mở rộng', 'expanded'], ['Số trạng thái con được sinh ra', 'generated'],
+    ['Số trạng thái sai bị loại', 'invalid'], ['Kích thước lớn nhất của hàng đợi / OPEN', 'maxFrontier'],
+    ['Số lần qua sông của lời giải', 'cost'], ['Số bước ghi nhật ký', null]];
+  const val = (r, k) => k ? r[k] : r.steps.length;
+  const max = Math.max(b.expanded, a.expanded, 1), diff = b.expanded - a.expanded;
+  const verdict = diff > 0
+    ? `A* mở rộng ít hơn BFS <b class="win">${diff} nút</b> (${b.expanded} so với ${a.expanded}).`
+    : diff === 0 ? `Trên bài toán nhỏ này, cả hai mở rộng số nút bằng nhau (${a.expanded}).`
+    : `BFS mở rộng ít hơn A* ${-diff} nút trên bài toán nhỏ này.`;
+  return `<div class="card scroll"><h2>Bảng số liệu (tính từ lần chạy thật)</h2>
+  <table><tr><th>Tiêu chí</th><th>BFS</th><th>A*</th></tr>
+  ${rows.map(([t, k]) => `<tr><td>${t}</td><td>${val(b, k)}</td><td>${val(a, k)}</td></tr>`).join('')}</table>
+  <h3>Số nút được mở rộng</h3>
+  <div class="bar b"><span style="width:40px">BFS</span><i style="width:${b.expanded / max * 300}px"></i>${b.expanded}</div>
+  <div class="bar a"><span style="width:40px">A*</span><i style="width:${a.expanded / max * 300}px"></i>${a.expanded}</div>
+  <p>${verdict} Cả hai đều tìm được lời giải ngắn nhất ${a.cost} lần qua sông.</p></div>
+  <div class="card"><h2>Khác biệt cốt lõi</h2>
+  <table><tr><th></th><th>BFS</th><th>A*</th></tr>
+  <tr><td>Thứ tự chọn nút</td><td>Vào trước ra trước (FIFO), chỉ dựa vào độ sâu</td><td>Nút có f(n) = g(n) + h(n) nhỏ nhất</td></tr>
+  <tr><td>Thông tin về đích</td><td>Không dùng (duyệt mù)</td><td>Dùng h(n) để ưu tiên nhánh gần đích</td></tr>
+  <tr><td>Tính tối ưu</td><td>Tối ưu khi mỗi bước chi phí bằng nhau</td><td>Tối ưu khi h admissible (h ≤ chi phí thật)</td></tr>
+  <tr><td>Khi không gian lớn</td><td>Phải duyệt gần hết mọi tầng nông hơn lời giải</td><td>Bỏ qua được nhiều nhánh có f lớn</td></tr>
+  <tr><td>Chi phí thêm</td><td>Không cần tính gì thêm</td><td>Phải thiết kế và tính h(n) cho mỗi nút</td></tr></table>
+  <p><b>Ưu điểm của A* so với BFS:</b> A* dùng hiểu biết về bài toán (h) để đi về phía đích thay vì mở rộng đều mọi hướng.
+  Bài toán này chỉ có ${D.states.filter(s => s.valid).length} trạng thái hợp lệ, gần như một đường thẳng, nên chênh lệch nhỏ.
+  Với không gian hàng nghìn hoặc hàng triệu trạng thái, khoảng cách này mới lớn.</p></div>
+  <div class="card"><h2>Hai đường đi</h2><div class="cols">
+  <div><h3>BFS</h3><ol class="list" start="0">${b.path.map(p => `<li class="st">${p}</li>`).join('')}</ol></div>
+  <div><h3>A*</h3><ol class="list" start="0">${a.path.map(p => `<li class="st">${p}</li>`).join('')}</ol></div></div></div>`;
+}
+</script>
+</body>
+</html>
